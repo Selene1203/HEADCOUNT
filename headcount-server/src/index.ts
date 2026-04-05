@@ -29,10 +29,6 @@ app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Server running at http://localhost:${PORT}`);
-});
-
 // ── Helpers ───────────────────────────────────────────────────
 
 function formatProgramme(p: any) {
@@ -211,7 +207,7 @@ app.use("/api/attendance",          attendanceRoutes);
 app.use("/api",                     staticRoutes);
 
 // ── Start ────────────────────────────────────────────────────
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`\n🚀 Server running at http://localhost:${PORT}`);
   console.log(`📋 Health check: http://localhost:${PORT}/api/health\n`);
 });
