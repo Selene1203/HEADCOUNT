@@ -1,4 +1,13 @@
 // src/index.ts
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled Rejection:', reason);
+  process.exit(1);
+});
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
