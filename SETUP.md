@@ -56,9 +56,9 @@ This opens Prisma Studio in your browser so you can see the data visually.
 
 You should see:
   🚀 Server running at http://localhost:3001
-  📋 Health check: http://localhost:3001/api/health
+  📋 Health check: ${import.meta.env.VITE_API_URL}/health
 
-Open http://localhost:3001/api/health in your browser to confirm it works.
+Open ${import.meta.env.VITE_API_URL}/health in your browser to confirm it works.
 
 ## Step 8 — Keep both servers running
 You need TWO terminals open while developing:

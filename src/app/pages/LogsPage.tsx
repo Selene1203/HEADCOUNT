@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Button } from '../components/ui/button';
 import { RefreshCw, ShieldAlert, Info, AlertTriangle, Users, ClipboardList, UserCheck, Download } from 'lucide-react';
 
-const API = import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api';
+const API = import.meta.env.VITE_API_URL ?? '${import.meta.env.VITE_API_URL}';
 
 const CATEGORY_LABELS: Record<LogCategory, string> = {
   auth:            'Authentication',

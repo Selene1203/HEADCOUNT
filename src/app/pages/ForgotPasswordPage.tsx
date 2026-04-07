@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { PasswordInput } from '../components/ui/password-input';
 import { GraduationCap, ArrowLeft, Loader2 } from 'lucide-react';
 
-const API = import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api';
+const API = import.meta.env.VITE_API_URL ?? '${import.meta.env.VITE_API_URL}';
 
 export function ForgotPasswordPage() {
   const [step, setStep]                       = useState<'email' | 'reset'>('email');

@@ -8,7 +8,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { GraduationCap, Loader2, ShieldCheck } from 'lucide-react';
 
-const API          = import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api';
+const API          = import.meta.env.VITE_API_URL ?? '${import.meta.env.VITE_API_URL}';
 const ADMIN_SECRET = 'NUL-ADMIN-2026'; // ← change this to your secret
 
 export function LoginPage() {

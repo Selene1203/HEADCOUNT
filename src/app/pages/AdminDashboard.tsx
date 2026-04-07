@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { BookOpen, Users, UserCircle, TrendingUp, Building2, Edit2, X, Loader2, Check } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-const API = import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api';
+const API = import.meta.env.VITE_API_URL ?? '${import.meta.env.VITE_API_URL}';
 
 export function AdminDashboard() {
   const { users, courses, attendance } = useData();
