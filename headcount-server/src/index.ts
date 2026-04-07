@@ -18,7 +18,7 @@ dotenv.config();
 const app  = express();
 const PORT = parseInt(process.env.PORT || '3001', 10);
 app.use(cors({
-  origin: ["http://localhost:5173", "http://localhost:3000","https://headcount-nine.vercel.app/"],
+  origin: ["http://localhost:5173", "http://localhost:3000","https://headcount-nine.vercel.app"],
   credentials: true,
 }));
 app.use(express.json());
