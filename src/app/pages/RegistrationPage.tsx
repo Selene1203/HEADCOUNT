@@ -5,7 +5,7 @@ import { BookOpen, UserPlus, Check, AlertCircle, Loader2 } from "lucide-react";
 import { useData } from "../contexts/DataContext";
 import { useAuth } from "../contexts/AuthContext";
 
-const API = "${import.meta.env.VITE_API_URL}";
+const API = `${import.meta.env.VITE_API_URL}`;
 
 const inputCls = "w-full border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-slate-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent";
 const selectCls = inputCls;
