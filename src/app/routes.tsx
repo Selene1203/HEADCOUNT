@@ -1,7 +1,6 @@
 import { Navigate, type RouteObject } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
 import { Layout } from './components/Layout';
-import { LogProvider } from './contexts/LogContext';
 
 import { LoginPage }          from './pages/LoginPage';
 import RegistrationPage       from './pages/RegistrationPage';
@@ -21,6 +20,7 @@ import EnrollCoursesPage      from './pages/EnrollCoursesPage';
 import DepartmentsPage        from './pages/DepartmentsPage';
 import { MarkAttendancePage } from './pages/MarkAttendancePage';
 import { LogsPage }           from './pages/LogsPage';
+
 function RedirectToHome() {
   return <Navigate to="/" replace />;
 }
@@ -39,11 +39,7 @@ function ProtectedRoute({
     if (user.role === 'lecturer') return <Navigate to="/lecturer-dashboard" replace />;
     return <Navigate to="/student-dashboard" replace />;
   }
-  return (
-    <LogProvider>
-      <Layout>{children}</Layout>
-    </LogProvider>
-  );
+  return <Layout>{children}</Layout>;
 }
 
 export const routes: RouteObject[] = [
@@ -51,7 +47,6 @@ export const routes: RouteObject[] = [
   { path: '/register',        element: <RegistrationPage /> },
   { path: '/forgot-password', element: <ForgotPasswordPage /> },
 
-  // Admin only
   { path: '/admin-dashboard', element: <ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute> },
   { path: '/students',        element: <ProtectedRoute allowedRoles={['admin']}><StudentsPage /></ProtectedRoute> },
   { path: '/courses',         element: <ProtectedRoute allowedRoles={['admin']}><CoursesPage /></ProtectedRoute> },
@@ -60,19 +55,16 @@ export const routes: RouteObject[] = [
   { path: '/logs',            element: <ProtectedRoute allowedRoles={['admin']}><LogsPage /></ProtectedRoute> },
   { path: '/flowchart',       element: <ProtectedRoute allowedRoles={['admin']}><FlowchartPage /></ProtectedRoute> },
 
-  // Lecturer only
   { path: '/lecturer-dashboard', element: <ProtectedRoute allowedRoles={['lecturer']}><LecturerDashboard /></ProtectedRoute> },
   { path: '/my-courses',         element: <ProtectedRoute allowedRoles={['lecturer']}><MyCoursesPage /></ProtectedRoute> },
   { path: '/begin-class',        element: <ProtectedRoute allowedRoles={['lecturer']}><BeginClassPage /></ProtectedRoute> },
   { path: '/take-attendance',    element: <ProtectedRoute allowedRoles={['lecturer']}><TakeAttendancePage /></ProtectedRoute> },
 
-  // Student only
   { path: '/student-dashboard', element: <ProtectedRoute allowedRoles={['student']}><StudentDashboard /></ProtectedRoute> },
   { path: '/enroll-courses',    element: <ProtectedRoute allowedRoles={['student']}><EnrollCoursesPage /></ProtectedRoute> },
   { path: '/mark-attendance',   element: <ProtectedRoute allowedRoles={['student']}><MarkAttendancePage /></ProtectedRoute> },
 
-  // Shared (admin + lecturer + student)
   { path: '/reports', element: <ProtectedRoute><ReportsPage /></ProtectedRoute> },
 
- { path: '*', element: <RedirectToHome /> },
+  { path: '*', element: <RedirectToHome /> },
 ];
