@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useNavigate, Link } from "react-router";
+import { useNavigate, Link } from "react-router-dom";
 import { PasswordInput } from '../components/ui/password-input';
 import { BookOpen, UserPlus, Check, AlertCircle, Loader2 } from "lucide-react";
 import { useData } from "../contexts/DataContext";
