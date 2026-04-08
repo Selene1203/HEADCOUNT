@@ -21,6 +21,9 @@ import EnrollCoursesPage      from './pages/EnrollCoursesPage';
 import DepartmentsPage        from './pages/DepartmentsPage';
 import { MarkAttendancePage } from './pages/MarkAttendancePage';
 import { LogsPage }           from './pages/LogsPage';
+function RedirectToHome() {
+  return <Navigate to="/" replace />;
+}
 
 function ProtectedRoute({
   children,
@@ -71,5 +74,5 @@ export const routes: RouteObject[] = [
   // Shared (admin + lecturer + student)
   { path: '/reports', element: <ProtectedRoute><ReportsPage /></ProtectedRoute> },
 
-  { path: '*', element: <Navigate to="/" replace /> },
+ { path: '*', element: <RedirectToHome /> },
 ];
