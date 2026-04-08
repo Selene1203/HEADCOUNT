@@ -13,7 +13,6 @@ router.post("/login", async (req: Request, res: Response) => {
     res.status(400).json({ error: "Email and password are required" });
     return;
   }
-
   try {
     const user = await prisma.user.findUnique({
       where: { email: email.toLowerCase() },
@@ -24,23 +23,15 @@ router.post("/login", async (req: Request, res: Response) => {
         assignedCourses: { include: { course: true } },
       },
     });
-
     if (!user) { res.status(401).json({ error: "Invalid email or password" }); return; }
-
     const passwordMatch = await bcrypt.compare(password, user.password);
     if (!passwordMatch) { res.status(401).json({ error: "Invalid email or password" }); return; }
-
     const token = jwt.sign(
-  { userId: user.id, role: user.role },
-  process.env.JWT_SECRET as string,
-  { expiresIn: "7d" }
-);
-
-    // Shape response to match your existing User interface in DataContext
-    res.json({
-      token,
-      user: formatUser(user),
-    });
+      { userId: user.id, role: user.role },
+      process.env.JWT_SECRET as string,
+      { expiresIn: "7d" }
+    );
+    res.json({ token, user: formatUser(user) });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: "Server error" });
@@ -51,18 +42,14 @@ router.post("/login", async (req: Request, res: Response) => {
 router.post("/register", async (req: Request, res: Response) => {
   const { name, email, password, role, phone, studentId, staffId,
           departmentId, programmeId, yearOfStudy, courseIds } = req.body;
-
   if (!name || !email || !password || !role) {
     res.status(400).json({ error: "Name, email, password and role are required" });
     return;
   }
-
   try {
     const existing = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
     if (existing) { res.status(409).json({ error: "Email already registered" }); return; }
-
     const hashed = await bcrypt.hash(password, 10);
-
     const user = await prisma.user.create({
       data: {
         name,
@@ -75,16 +62,11 @@ router.post("/register", async (req: Request, res: Response) => {
         departmentId,
         programmeId,
         yearOfStudy: yearOfStudy ? Number(yearOfStudy) : undefined,
-        // ✅ Atomically link courses on creation — same fix as DataContext
         ...(role === "student" && courseIds?.length > 0 && {
-          enrolledCourses: {
-            create: (courseIds as string[]).map(courseId => ({ courseId })),
-          },
+          enrolledCourses: { create: (courseIds as string[]).map(courseId => ({ courseId })) },
         }),
         ...(role === "lecturer" && courseIds?.length > 0 && {
-          assignedCourses: {
-            create: (courseIds as string[]).map(courseId => ({ courseId })),
-          },
+          assignedCourses: { create: (courseIds as string[]).map(courseId => ({ courseId })) },
         }),
       },
       include: {
@@ -94,13 +76,11 @@ router.post("/register", async (req: Request, res: Response) => {
         assignedCourses: { include: { course: true } },
       },
     });
-
     const token = jwt.sign(
-  { userId: user.id, role: user.role },
-  process.env.JWT_SECRET as string,
-  { expiresIn: "7d" }
-);
-
+      { userId: user.id, role: user.role },
+      process.env.JWT_SECRET as string,
+      { expiresIn: "7d" }
+    );
     res.status(201).json({ token, user: formatUser(user) });
   } catch (e) {
     console.error(e);
@@ -108,21 +88,63 @@ router.post("/register", async (req: Request, res: Response) => {
   }
 });
 
-// ── Helper: shape DB user to match your frontend User interface ──
+// ── POST /api/auth/check-email ───────────────────────────────
+router.post("/check-email", async (req: Request, res: Response) => {
+  const { email } = req.body;
+  if (!email) { res.status(400).json({ error: "Email is required" }); return; }
+  try {
+    const user = await prisma.user.findUnique({
+      where: { email: email.toLowerCase() },
+    });
+    if (!user) { res.status(404).json({ error: "No account found with that email." }); return; }
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// ── POST /api/auth/reset-password ────────────────────────────
+router.post("/reset-password", async (req: Request, res: Response) => {
+  const { email, newPassword } = req.body;
+  if (!email || !newPassword) {
+    res.status(400).json({ error: "Email and new password are required" });
+    return;
+  }
+  if (newPassword.length < 6) {
+    res.status(400).json({ error: "Password must be at least 6 characters" });
+    return;
+  }
+  try {
+    const user = await prisma.user.findUnique({
+      where: { email: email.toLowerCase() },
+    });
+    if (!user) { res.status(404).json({ error: "No account found with that email." }); return; }
+    const hashed = await bcrypt.hash(newPassword, 10);
+    await prisma.user.update({
+      where: { email: email.toLowerCase() },
+      data:  { password: hashed },
+    });
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// ── Helper ───────────────────────────────────────────────────
 function formatUser(user: any) {
   return {
-    id:             user.id,
-    name:           user.name,
-    email:          user.email,
-    role:           user.role,
-    phone:          user.phone,
-    studentId:      user.studentId,
-    staffId:        user.staffId,
-    departmentId:   user.departmentId,
-    department:     user.department?.name,
-    programmeId:    user.programmeId,
-    programme:      user.programme?.name,
-    yearOfStudy:    user.yearOfStudy,
+    id:              user.id,
+    name:            user.name,
+    email:           user.email,
+    role:            user.role,
+    phone:           user.phone,
+    studentId:       user.studentId,
+    staffId:         user.staffId,
+    departmentId:    user.departmentId,
+    department:      user.department?.name,
+    programmeId:     user.programmeId,
+    programme:       user.programme?.name,
+    yearOfStudy:     user.yearOfStudy,
     enrolledCourses: user.enrolledCourses?.map((e: any) => e.courseId) ?? [],
     assignedCourses: user.assignedCourses?.map((a: any) => a.courseId) ?? [],
   };
