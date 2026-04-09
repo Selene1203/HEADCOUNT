@@ -1,12 +1,13 @@
-// src/middleware/auth.ts
-// Protects routes by verifying the JWT token sent by the frontend
-
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 
 export interface AuthRequest extends Request {
   userId?: string;
   userRole?: string;
+  user?: {
+    id: string;
+    role: string;
+  };
 }
 
 export const authenticate = (req: AuthRequest, res: Response, next: NextFunction) => {
@@ -19,17 +20,26 @@ export const authenticate = (req: AuthRequest, res: Response, next: NextFunction
   const token = authHeader.split(" ")[1];
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { userId: string; role: string };
-    req.userId   = decoded.userId;
+    
+    // Legacy support
+    req.userId = decoded.userId;
     req.userRole = decoded.role;
+
+    // Fixes the TS2339 error in routes
+    req.user = {
+      id: decoded.userId,
+      role: decoded.role,
+    };
+
     next();
   } catch {
     res.status(401).json({ error: "Invalid or expired token" });
   }
 };
 
-// Only allows admins through
 export const adminOnly = (req: AuthRequest, res: Response, next: NextFunction) => {
-  if (req.userRole !== "admin") {
+  const role = req.user?.role || req.userRole;
+  if (role !== "admin") {
     res.status(403).json({ error: "Admin access required" });
     return;
   }
