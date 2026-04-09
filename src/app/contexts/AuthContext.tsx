@@ -14,9 +14,36 @@ interface AuthContextValue {
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
-
 const USER_KEY  = "auth_user";
 const TOKEN_KEY = "auth_token";
+
+async function writeLog(
+  token: string,
+  user: User,
+  category: string,
+  action: string,
+  detail: string,
+  severity: "info" | "warning" | "error" = "info"
+) {
+  try {
+    await fetch(`${API}/logs`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        category,
+        action,
+        detail,
+        severity,
+        performedBy: user.id,
+        performedByName: user.name,
+        timestamp: new Date().toISOString(),
+      }),
+    });
+  } catch { /* silently fail */ }
+}
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(() => {
@@ -30,7 +57,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     sessionStorage.getItem(TOKEN_KEY)
   );
 
-  // Keep sessionStorage in sync
   useEffect(() => {
     if (user) sessionStorage.setItem(USER_KEY, JSON.stringify(user));
     else      sessionStorage.removeItem(USER_KEY);
@@ -49,9 +75,28 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         body:    JSON.stringify({ email, password }),
       });
       const data = await res.json();
-      if (!res.ok) return { success: false, error: data.error ?? "Login failed" };
+      if (!res.ok) {
+        // Log failed login attempt — no token yet so call directly
+        try {
+          await fetch(`${API}/logs`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              category: "auth",
+              action: "Login Failed",
+              detail: `Failed login attempt for ${email}`,
+              severity: "warning",
+              performedBy: "unknown",
+              performedByName: email,
+              timestamp: new Date().toISOString(),
+            }),
+          });
+        } catch { /* silently fail */ }
+        return { success: false, error: data.error ?? "Login failed" };
+      }
       setUser(data.user);
       setToken(data.token);
+      await writeLog(data.token, data.user, "auth", "Login", `${data.user.name} logged in`, "info");
       return { success: true };
     } catch {
       return { success: false, error: "Cannot connect to server. Is it running?" };
@@ -64,6 +109,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const logout = (): void => {
+    if (user && token) {
+      writeLog(token, user, "auth", "Logout", `${user.name} logged out`, "info");
+    }
     setUser(null);
     setToken(null);
   };
