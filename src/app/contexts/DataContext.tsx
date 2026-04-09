@@ -130,6 +130,33 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
     return res.json();
   }, [token]);
 
+  const writeLog = useCallback(async (
+    category: string,
+    action: string,
+    detail: string,
+    severity: "info" | "warning" | "error" = "info"
+  ) => {
+    if (!token || !authUser) return;
+    try {
+      await fetch(`${API}/logs`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          category,
+          action,
+          detail,
+          severity,
+          performedBy: authUser.id,
+          performedByName: authUser.name,
+          timestamp: new Date().toISOString(),
+        }),
+      });
+    } catch { /* silently fail */ }
+  }, [token, authUser]);
+
   // Load public data on mount
   useEffect(() => {
     const loadPublic = async () => {
@@ -154,7 +181,6 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
   // Load protected data after login
   useEffect(() => {
     if (!token || !authUser) return;
-
     const load = async () => {
       setLoading(true);
       try {
@@ -187,7 +213,6 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
         setLoading(false);
       }
     };
-
     load();
   }, [token, authUser?.id]);
 
@@ -199,7 +224,8 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
       body: JSON.stringify({ semester }),
     });
     setActiveSemesterState(semester);
-  }, [apiFetch]);
+    await writeLog("user_management", "Semester Changed", `Active semester set to ${semester}`, "info");
+  }, [apiFetch, writeLog]);
 
   // ── Users ─────────────────────────────────────────────────────
 
@@ -215,8 +241,9 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
         courseIds.includes(c.id) ? { ...c, lecturerId: newUser.id } : c
       ));
     }
+    await writeLog("user_management", "User Created", `${userData.role} account created for ${userData.name}`, "info");
     return newUser;
-  }, [apiFetch]);
+  }, [apiFetch, writeLog]);
 
   const updateUser = useCallback(async (id: string, updates: Partial<User>) => {
     const updated = await apiFetch(`/users/${id}`, {
@@ -225,12 +252,15 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
     });
     setUsers(prev => prev.map(u => u.id === id ? updated : u));
     if (authUser?.id === id) updateCurrentUser(updates);
-  }, [apiFetch, authUser, updateCurrentUser]);
+    await writeLog("user_management", "User Updated", `User ${updated.name} profile updated`, "info");
+  }, [apiFetch, authUser, updateCurrentUser, writeLog]);
 
   const deleteUser = useCallback(async (id: string) => {
+    const target = users.find(u => u.id === id);
     await apiFetch(`/users/${id}`, { method: "DELETE" });
     setUsers(prev => prev.filter(u => u.id !== id));
-  }, [apiFetch]);
+    await writeLog("user_management", "User Deleted", `User ${target?.name ?? id} was deleted`, "warning");
+  }, [apiFetch, users, writeLog]);
 
   const getUserById = useCallback((id: string) => users.find(u => u.id === id), [users]);
 
@@ -256,9 +286,12 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
       if (authUser?.id === studentId) {
         updateCurrentUser({ enrolledCourses: [...(authUser.enrolledCourses ?? []), courseId] });
       }
+      const student = users.find(u => u.id === studentId);
+      const course  = courses.find(c => c.id === courseId);
+      await writeLog("student_status", "Course Enrolled", `${student?.name ?? studentId} enrolled in ${course?.name ?? courseId}`, "info");
       return true;
     } catch { return false; }
-  }, [apiFetch, authUser, updateCurrentUser]);
+  }, [apiFetch, authUser, updateCurrentUser, users, courses, writeLog]);
 
   const unenrollStudentFromCourse = useCallback(async (studentId: string, courseId: string) => {
     await apiFetch(`/users/${studentId}/enroll/${courseId}`, { method: "DELETE" });
@@ -270,7 +303,10 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
     if (authUser?.id === studentId) {
       updateCurrentUser({ enrolledCourses: (authUser.enrolledCourses ?? []).filter(id => id !== courseId) });
     }
-  }, [apiFetch, authUser, updateCurrentUser]);
+    const student = users.find(u => u.id === studentId);
+    const course  = courses.find(c => c.id === courseId);
+    await writeLog("student_status", "Course Unenrolled", `${student?.name ?? studentId} unenrolled from ${course?.name ?? courseId}`, "warning");
+  }, [apiFetch, authUser, updateCurrentUser, users, courses, writeLog]);
 
   const assignLecturerToCourse = useCallback(async (lecturerId: string, courseId: string): Promise<boolean> => {
     try {
@@ -287,9 +323,12 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
       if (authUser?.id === lecturerId) {
         updateCurrentUser({ assignedCourses: [...new Set([...(authUser.assignedCourses ?? []), courseId])] });
       }
+      const lecturer = users.find(u => u.id === lecturerId);
+      const course   = courses.find(c => c.id === courseId);
+      await writeLog("user_management", "Lecturer Assigned", `${lecturer?.name ?? lecturerId} assigned to ${course?.name ?? courseId}`, "info");
       return true;
     } catch { return false; }
-  }, [apiFetch, authUser, updateCurrentUser]);
+  }, [apiFetch, authUser, updateCurrentUser, users, courses, writeLog]);
 
   const unassignLecturerFromCourse = useCallback(async (lecturerId: string, courseId: string) => {
     await apiFetch(`/users/${lecturerId}/assign/${courseId}`, { method: "DELETE" });
@@ -304,7 +343,10 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
     if (authUser?.id === lecturerId) {
       updateCurrentUser({ assignedCourses: (authUser.assignedCourses ?? []).filter(id => id !== courseId) });
     }
-  }, [apiFetch, authUser, updateCurrentUser]);
+    const lecturer = users.find(u => u.id === lecturerId);
+    const course   = courses.find(c => c.id === courseId);
+    await writeLog("user_management", "Lecturer Unassigned", `${lecturer?.name ?? lecturerId} unassigned from ${course?.name ?? courseId}`, "warning");
+  }, [apiFetch, authUser, updateCurrentUser, users, courses, writeLog]);
 
   // ── Courses ───────────────────────────────────────────────────
 
@@ -314,8 +356,9 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
       body: JSON.stringify(courseData),
     });
     setCourses(prev => [...prev, course]);
+    await writeLog("user_management", "Course Created", `Course ${courseData.name} (${courseData.code}) created`, "info");
     return course;
-  }, [apiFetch]);
+  }, [apiFetch, writeLog]);
 
   const updateCourse = useCallback(async (id: string, updates: Partial<Course>) => {
     const updated = await apiFetch(`/courses/${id}`, {
@@ -323,12 +366,15 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
       body: JSON.stringify(updates),
     });
     setCourses(prev => prev.map(c => c.id === id ? updated : c));
-  }, [apiFetch]);
+    await writeLog("user_management", "Course Updated", `Course ${updated.name} was updated`, "info");
+  }, [apiFetch, writeLog]);
 
   const deleteCourse = useCallback(async (id: string) => {
+    const target = courses.find(c => c.id === id);
     await apiFetch(`/courses/${id}`, { method: "DELETE" });
     setCourses(prev => prev.filter(c => c.id !== id));
-  }, [apiFetch]);
+    await writeLog("user_management", "Course Deleted", `Course ${target?.name ?? id} was deleted`, "warning");
+  }, [apiFetch, courses, writeLog]);
 
   // ── Departments ───────────────────────────────────────────────
 
@@ -338,8 +384,9 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
       body: JSON.stringify({ name }),
     });
     setDepartments(prev => [...prev, dept]);
+    await writeLog("user_management", "Department Created", `Department ${name} created`, "info");
     return dept;
-  }, [apiFetch]);
+  }, [apiFetch, writeLog]);
 
   const updateDepartment = useCallback(async (id: string, name: string) => {
     const updated = await apiFetch(`/departments/${id}`, {
@@ -347,12 +394,15 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
       body: JSON.stringify({ name }),
     });
     setDepartments(prev => prev.map(d => d.id === id ? updated : d));
-  }, [apiFetch]);
+    await writeLog("user_management", "Department Updated", `Department updated to ${name}`, "info");
+  }, [apiFetch, writeLog]);
 
   const deleteDepartment = useCallback(async (id: string) => {
+    const target = departments.find(d => d.id === id);
     await apiFetch(`/departments/${id}`, { method: "DELETE" });
     setDepartments(prev => prev.filter(d => d.id !== id));
-  }, [apiFetch]);
+    await writeLog("user_management", "Department Deleted", `Department ${target?.name ?? id} deleted`, "warning");
+  }, [apiFetch, departments, writeLog]);
 
   // ── Programmes ────────────────────────────────────────────────
 
@@ -362,8 +412,9 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
       body: JSON.stringify({ name, departmentIds }),
     });
     setProgrammes(prev => [...prev, normaliseProgramme(prog)]);
+    await writeLog("user_management", "Programme Created", `Programme ${name} created`, "info");
     return normaliseProgramme(prog);
-  }, [apiFetch]);
+  }, [apiFetch, writeLog]);
 
   const updateProgramme = useCallback(async (id: string, name: string, departmentIds: string[]) => {
     const updated = await apiFetch(`/programmes/${id}`, {
@@ -371,12 +422,15 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
       body: JSON.stringify({ name, departmentIds }),
     });
     setProgrammes(prev => prev.map(p => p.id === id ? normaliseProgramme(updated) : p));
-  }, [apiFetch]);
+    await writeLog("user_management", "Programme Updated", `Programme updated to ${name}`, "info");
+  }, [apiFetch, writeLog]);
 
   const deleteProgramme = useCallback(async (id: string) => {
+    const target = programmes.find(p => p.id === id);
     await apiFetch(`/programmes/${id}`, { method: "DELETE" });
     setProgrammes(prev => prev.filter(p => p.id !== id));
-  }, [apiFetch]);
+    await writeLog("user_management", "Programme Deleted", `Programme ${target?.name ?? id} deleted`, "warning");
+  }, [apiFetch, programmes, writeLog]);
 
   // ── Attendance ────────────────────────────────────────────────
 
@@ -386,7 +440,9 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
       body: JSON.stringify(record),
     });
     setAttendance(prev => [...prev, created]);
-  }, [apiFetch]);
+    const course = courses.find(c => c.id === record.courseId);
+    await writeLog("attendance", "Attendance Marked", `Attendance marked for ${course?.name ?? record.courseId} on ${record.date}`, "info");
+  }, [apiFetch, courses, writeLog]);
 
   const updateAttendance = useCallback(async (id: string, updates: Partial<AttendanceRecord>) => {
     const updated = await apiFetch(`/attendance/${id}`, {
@@ -394,7 +450,8 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
       body: JSON.stringify(updates),
     });
     setAttendance(prev => prev.map(a => a.id === id ? updated : a));
-  }, [apiFetch]);
+    await writeLog("attendance", "Attendance Updated", `Attendance record ${id} updated`, "info");
+  }, [apiFetch, writeLog]);
 
   const getStudentAttendance = useCallback(
     (studentUserId: string) => attendance.filter(a => a.studentId === studentUserId),
