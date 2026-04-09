@@ -21,11 +21,13 @@ import courseRoutes            from "./routes/courses";
 import attendanceRoutes        from "./routes/attendance";
 import attendanceSessionRoutes from "./routes/attendanceSession";
 import staticRoutes            from "./routes/static";
+import settingsRoutes          from "./routes/settings";
 
 dotenv.config();
 
 const app  = express();
 const PORT = parseInt(process.env.PORT || '3001', 10);
+app.use("/api/settings", settingsRoutes);
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin || origin.endsWith(".vercel.app")) {
