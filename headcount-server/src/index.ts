@@ -27,7 +27,7 @@ dotenv.config();
 
 const app  = express();
 const PORT = parseInt(process.env.PORT || '3001', 10);
-app.use("/api/settings", settingsRoutes);
+
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin || origin.endsWith(".vercel.app")) {
@@ -48,7 +48,6 @@ app.get("/api/health", (_req, res) => {
 // ── Helpers ───────────────────────────────────────────────────
 
 function formatProgramme(p: any) {
-  // Use the first linked department as the primary departmentId
   const firstDept = p.departments?.[0];
   return {
     id:           p.id,
@@ -60,7 +59,7 @@ function formatProgramme(p: any) {
   };
 }
 
-// ── Public routes (no auth — needed for registration page) ───
+// ── Public routes ────────────────────────────────────────────
 
 app.get("/api/departments/public", async (_req, res) => {
   try {
@@ -142,12 +141,11 @@ app.get("/api/programmes", async (_req, res) => {
 app.post("/api/programmes", async (req, res) => {
   const { name, departmentIds, departmentId } = req.body;
   if (!name) { res.status(400).json({ error: "Name is required" }); return; }
- 
-  // Accept either departmentIds (array) or departmentId (legacy single string)
+
   const deptIds: string[] = Array.isArray(departmentIds)
     ? departmentIds
     : departmentId ? [departmentId] : [];
- 
+
   try {
     const prog = await prisma.programme.create({
       data: {
@@ -169,20 +167,18 @@ app.post("/api/programmes", async (req, res) => {
 
 app.put("/api/programmes/:id", async (req, res) => {
   const { name, departmentIds, departmentId } = req.body;
- 
-  // Accept either departmentIds (array) or departmentId (legacy single string)
+
   const deptIds: string[] = Array.isArray(departmentIds)
     ? departmentIds
     : departmentId ? [departmentId] : [];
- 
+
   try {
     await prisma.programme.update({
       where: { id: req.params.id },
       data: { name },
     });
- 
+
     if (deptIds.length > 0) {
-      // Replace all department links
       await prisma.programmeDepartment.deleteMany({
         where: { programmeId: req.params.id },
       });
@@ -191,21 +187,21 @@ app.put("/api/programmes/:id", async (req, res) => {
         skipDuplicates: true,
       });
     }
- 
+
     const updated = await prisma.programme.findUnique({
       where: { id: req.params.id },
       include: { departments: { include: { department: true } } },
     });
     res.json(formatProgramme(updated));
   } catch (e: any) {
-      if (e.code === 'P2002') {
-        res.status(400).json({ error: "A programme with that name already exists." });
-        return;
-      }
+    if (e.code === 'P2002') {
+      res.status(400).json({ error: "A programme with that name already exists." });
+      return;
+    }
     res.status(500).json({ error: "Server error" });
   }
-    });
- 
+});
+
 app.delete("/api/programmes/:id", async (req, res) => {
   try {
     await prisma.programme.delete({ where: { id: req.params.id } });
@@ -214,6 +210,7 @@ app.delete("/api/programmes/:id", async (req, res) => {
 });
 
 // ── Authenticated routes ─────────────────────────────────────
+app.use("/api/settings",            settingsRoutes);
 app.use("/api/auth",                authRoutes);
 app.use("/api/users",               userRoutes);
 app.use("/api/courses",             courseRoutes);
